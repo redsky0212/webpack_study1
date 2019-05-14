@@ -1,0 +1,140 @@
+현재 git 위치 (https://github.com/redsky0212/webpack_study1.git)
+
+
+** webpack 4 환경구성을 위한 순서-----------------------------------------------------------------------
+
+  * git 을 사용하기 위하여 git 저장소 연결부터 한다.----------------------
+   - git init (git를 사용하기 위한 초기화)
+   - git저장소 연결 (git remote add origin 깃주소)
+   - 아무파일이나 생성 후 (git add 파일명 ---> git commit -m '설명' ---> git push origin master)
+
+  * 본격적으로 webpack환경을 구성하기위한 시작.
+   - (npm init) node를 사용하기 위한 node프로젝트 생성.
+   - (npm install webpack webpack-cli --save-dev) webpack과 webpack-cli를 로컬로 설치한다. webpack 4는 webpack코어와 webpack-cli가 분리 되어있기때문에 같이 설치한다.
+   - 지금까지 기본 webpack환경구성이 되었다.
+   - test를 위한 파일을 생성하고 (src/index.js) 명령어를 치면(npx webpack --mode development) 번들링된 파일이 dist/main.js 로 생성된다.
+   - mode가 development(번들링된 main.js파일의 소스가 압축되지 않는다.), production(main.js파일의 소스가 압축되서 생서) 두가지 모드가 있다.
+     (npx란 : 로컬에 설치된 도구들을 npm run scripts없이 사용할 때 )
+
+  * 좀 더 구체적인 설정을 위해서는 webpack.config.js 파일을 만들어 적용해야한다.
+   - webpack실행할때는 mode를 반드시 명시해줘야 하는데, 개발,운영에 맞게 따로 파일을 생성해서 실행하기도 한다.(webpack.config.dev.js)
+   - 명령라인에서는 (npx webpack --config webpack.config.dev.js) 와 같이 config옵션으로 다른파일 설정을 적용할 수 있다. 
+      이 때 mode를 실행하지 않았기 때문에 webpack.config.dev.js파일 내부에 mode옵션이 들어있어야 한다.
+      혹시 잘못해서 명령라인에 --mode 를 적용하면 내부의 mode옵션을 덮어씌우게 되므로 주의한다.
+
+   - config파일을 따로 분리하지 않고 하나의 파일에서 분기 하려면 소스의 내용이 달라져야한다.
+     기본---------                 하나의 config파일로 mode에 따라 분기------------
+     module.exports = {};           module.exports = (env, options) => {};
+      ---> 이와같이 함수 형태로 소스를 코딩해야한다. 
+      ---> options 인자에 명령줄에서 코딩한 옵션값이 넘어온다. ( 예) options.mode )
+      ------------------------------------------------------------
+      module.exports = (env, options) => {
+        const config = {
+            entry: {
+            app: ['./src/index.js']
+            },
+            output: {
+            filename: '[name].bundle.js',
+            path: path.resolve(__dirname, 'dist')
+            }
+        }
+
+        if(options.mode === 'development') {
+            //... Development 설정
+        } else {
+            //... Production 설정
+        }
+
+        return config;
+      }
+      ------------------------------------------------------------ 
+
+  * Production 빌드 설정
+   - webpack4 에서는 uglifyWebpackPlugin이 내장되어있어서 따로 설치할 필요가 없다.
+   - 따라서 mode production 설정만으로 추가 설정 필요없이 빌드 하면 된다.
+   - 다만 기존의 빌드된 dist 디렉토리만 삭제하고 다시 빌드하는 것이 필요하다.
+   - ( npm i --save-dev clean-webpack-plugin ) 
+   ---------------------------------------------------------------
+    const CleanWebpackPlugin = require('clean-webpack-plugin');
+
+    module.exports = (env, options) => {
+        //...
+
+        if(options.mode === 'development') {
+            //...
+        } else {
+            // Production 설정
+            config.plugins = [
+                new CleanWebpackPlugin(['dist'])
+            ];
+        }
+        return config;
+    }
+    ---------------------------------------------------------------
+
+  * Development 빌드 설정
+   - Development빌드는 따로 만들 일은 없고 개발시 필요한 설정만 한다.
+     대략 ---> 로컬서버구동(webpack-dev-server), 서버띄울때마다 임시index.html파일생성해서 봄(htmlWebpackPlugin)
+     ( npm i --save-dev html-webpack-plugin webpack-dev-server )
+     ---------------------------------------------------------------
+    const webpack = require('webpack');
+    const HtmlWebpackPlugin = require('html-webpack-plugin');
+    // ....
+
+    module.exports = (env, options) => {
+        const config = {
+            // ....
+        };
+
+        if(options.mode === 'development'){
+
+            config.plugins = [
+                new webpack.HotModuleReplacementPlugin(),
+                new HtmlWebpackPlugin({
+                    title: 'Development',
+                    showErrors: true    // 에러발생시 메세지가 브라우저 화면에 노출.
+                })
+            ];
+            config.devtool = 'inline-source-map';
+            config.devServer = {
+                hot: true,  // 서버에서 HMR을 켠다.
+                host: '0.0.0.0',    // 디폴드로는 'localhost'로 잡혀있다. 외부에서 개발 서버에 접속해서 테스트하기 위해서는 '0.0.0.0'으로 설정해야한다.
+                contentBase: './dist',  // 개발서버의 루트 경로
+                stats: {
+                    color: true
+                }
+            };
+
+        }else{
+            // Production 설정
+            // ....
+        }
+
+        return config;
+    }
+    ---------------------------------------------------------------
+
+  * splitChunks 참고(https://webpack.js.org/plugins/split-chunks-plugin/#select-chunks)
+   - 대형 프로젝트에서 거대한 번들 파일을 적절히 분리하고 나눌 수 있다.
+   - 자주 사용되는 분리 방식은 npm 설치 모듈과 실제구현코드의 분리 이다.
+   - config객체에 아래내용 추가.
+   ----------------------------------------------------------------
+   optimization: {
+        splitChunks: {
+            cacheGroups: {
+                commons: {
+                    test: /[\\/]node_modules[\\/]/, // 대상이 되는 것을 정규식으로 잡는부분.
+                    name: 'venders',                // 위 [name] 부분에 들어갈 파일명.
+                    chunks: 'all'                   // 'initial','async','all'이 있다. 
+                }
+            }
+        }
+    }
+    ----------------------------------------------------------------
+
+  * package.json에 scripts 내용 추가 (npm run )을 쉽게 적용하기위함.
+    "scripts": {
+        "build-dev": "webpack --mode development",
+        "build": "webpack --mode production",
+        "dev": "webpack-dev-server --open --mode development"
+    },
