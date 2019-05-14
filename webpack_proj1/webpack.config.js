@@ -46,9 +46,9 @@ module.exports = (env, options) => {
 
     }else{
         // Production 설정
-        //config.plugins = [
-        //    new CleanWebpackPlugin(['dist'])
-        //];
+        config.plugins = [
+            new CleanWebpackPlugin()
+        ];
     }
 
     return config;

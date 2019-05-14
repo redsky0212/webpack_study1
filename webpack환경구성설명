@@ -52,7 +52,7 @@
   * Production 빌드 설정
    - webpack4 에서는 uglifyWebpackPlugin이 내장되어있어서 따로 설치할 필요가 없다.
    - 따라서 mode production 설정만으로 추가 설정 필요없이 빌드 하면 된다.
-   - 다만 기존의 빌드된 dist 디렉토리만 삭제하고 다시 빌드하는 것이 필요하다.
+   - 다만 기존의 빌드된 dist 디렉토리만 삭제하고 다시 빌드하는 것이 필요하다.(https://github.com/johnagan/clean-webpack-plugin) 인자는 객체형태여야함.
    - ( npm i --save-dev clean-webpack-plugin ) 
    ---------------------------------------------------------------
     const CleanWebpackPlugin = require('clean-webpack-plugin');
@@ -65,7 +65,7 @@
         } else {
             // Production 설정
             config.plugins = [
-                new CleanWebpackPlugin(['dist'])
+                new CleanWebpackPlugin()    // 기본은 'dist' 아래 내용이 삭제됨.
             ];
         }
         return config;
